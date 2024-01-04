@@ -1,5 +1,7 @@
 import * as http from "http";
 import * as https from "https";
+import * as socks from "socks";
+import * as net from "net";
 
 interface Options {
     protocol : string;
@@ -15,6 +17,7 @@ interface Proxy {
 };
 
 type ProxyList = Proxy[];
+type Tor = Proxy;
 
 /**
  * Example Url: https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all
@@ -52,13 +55,18 @@ export default class API {
 
     private url : string = "https://api.proxyscrape.com/v2/";
     private proxys : ProxyList = []; 
+    private tor : Tor = {
+        ip: '127.0.0.1',
+        port: 9050
+    };
 
-    public constructor(options? : Partial<Options>){
+    public constructor(options? : Partial<Options>, tor? : Tor){
         this.protocol = options.protocol ?? "https";
         this.timeout = options.timeout ?? 10000;
         this.country = options.country ?? "all";
         this.ssl = options.ssl ?? "yes";
         this.anonymity = options.anonymity ?? "all";
+        if(tor) this.tor = tor;
         this.generate();
     };
 
@@ -94,7 +102,37 @@ export default class API {
     };
 
     public async tryProxy(proxy : Proxy) : boolean {
+        const options : socks.SocksClientOptions = {
+            proxy: {
+              host: this.tor.ip,
+              port: this.tor.port,
+              type: 5 
+            },
+            command: 'connect',
+            destination: {
+              host: proxy.ip, 
+              port: proxy.port
+            }
+        };
 
+        try {
+            const info = await socks.SocksClient.createConnection(options);          
+            const sock : net.Socket = info.socket;
+
+            const options : http.RequestOptions = {
+                hostname: 'example.com',
+                port: 443,
+                path: '/path',
+                method: 'GET',
+                socket: sock
+            };            
+
+        } catch (err) {
+            // some error log
+            return false;
+        };
+          
+        return true;
     };
 
 };
