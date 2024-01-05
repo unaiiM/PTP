@@ -1,16 +1,21 @@
 import * as tls from "tls";
 import * as net from "net";
-import * as http from "http";
-import HttpParser, { Headers, Request, RequestLine } from "./http-parser";
+import HttpParser, { Headers, Request, Response, RequestLine } from "./http-parser";
+import { EventEmitter } from "events";
 
-class HttpsHandler {
+class HttpsHandler extends EventEmitter {
 
     public socket : tls.TLSSocket;
     private parser : HttpParser = new HttpParser();
 
     constructor(sock : net.Socket){
-      this.parser.on("end", (res) =>  {
+      super();
 
+      this.parser.on("end", (res : Request | Response) =>  {
+        if(HttpParser.isResponse(res)){
+          res = res as Response;
+                    
+        };
       });
 
       this.socket = new tls.TLSSocket(sock);

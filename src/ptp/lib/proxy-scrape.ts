@@ -1,9 +1,8 @@
 import * as http from "http";
 import * as https from "https";
-import * as socks from "socks";
-import * as net from "net";
+import { EventEmitter } from "events";
 
-interface Options {
+export interface Options {
     protocol : string;
     timeout : number;
     country : string;
@@ -11,18 +10,17 @@ interface Options {
     anonymity : string;
 };
 
-interface Proxy {
+export interface Proxy {
     ip : string;
     port : number;
 };
 
-type ProxyList = Proxy[];
-type Tor = Proxy;
+export type ProxyList = Proxy[];
 
 /**
  * Example Url: https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all
  */
-export default class API {
+export default class ProxyScrape extends EventEmitter {
 
     /**
      * displayproxies: display the proxies in the browser
@@ -53,31 +51,34 @@ export default class API {
      */
     public anonymity : string;
 
-    private url : string = "https://api.proxyscrape.com/v2/";
-    private proxys : ProxyList = []; 
-    private tor : Tor = {
-        ip: '127.0.0.1',
-        port: 9050
-    };
 
-    public constructor(options? : Partial<Options>, tor? : Tor){
+    private ProxyMaxTimeout = 4000;
+    private MaxQueueProxyTest = 5;
+    private url : string = "https://api.proxyscrape.com/v2/";
+    public proxys : ProxyList; 
+    public validProxys : ProxyList;
+
+    public constructor(options : Partial<Options> = {}){
+        super();
         this.protocol = options.protocol ?? "https";
         this.timeout = options.timeout ?? 10000;
         this.country = options.country ?? "all";
-        this.ssl = options.ssl ?? "yes";
+        this.ssl = options.ssl ?? "all";
         this.anonymity = options.anonymity ?? "all";
-        if(tor) this.tor = tor;
         this.generate();
     };
 
     public generate() : void {
-        let query : string = `request=${this.request}&protocol=${this.protocol}&timeout=${this.timeout}`
-        + `&country=${this.country}&ssl=${this.ssl}&anonymity=${this.anonymity}`;
-        this.url + "?" + query;
+        let query : string = `request=${this.request}&protocol=${this.protocol}&timeout=${this.timeout}` +
+        `&country=${this.country}&ssl=${this.ssl}&anonymity=${this.anonymity}`;
+        this.url += "?" + query;
     };
 
     public async getProxys() : Promise<void> {
+        this.reset();
+
         let content : string = await new Promise((resolv, reject) => {
+            console.log(this.url);
             let req : http.ClientRequest = https.get(this.url, (res : http.IncomingMessage) => {
                 let content : string = "";
                 res.on("data", (buff : Buffer) => content += buff.toString());
@@ -99,40 +100,47 @@ export default class API {
 
             this.proxys.push(proxy);
         };
+
+        this.emit("loaded");
     };
 
-    public async tryProxy(proxy : Proxy) : boolean {
-        const options : socks.SocksClientOptions = {
-            proxy: {
-              host: this.tor.ip,
-              port: this.tor.port,
-              type: 5 
-            },
-            command: 'connect',
-            destination: {
-              host: proxy.ip, 
-              port: proxy.port
-            }
+    public async findValidProxys(){
+        let done : number = 0;
+        
+        for(let i = 0; i < this.MaxQueueProxyTest; i++){
+            this.tryProxy(this.proxys[i], (valid : boolean) => {
+
+            });
         };
+    };
 
-        try {
-            const info = await socks.SocksClient.createConnection(options);          
-            const sock : net.Socket = info.socket;
+    public async tryProxy(proxy : Proxy, cb? : (valid : boolean) => void) : Promise<boolean> {
+        return new Promise((resolv, reject) => {
+            let req : http.ClientRequest;
+            let timeoutId : NodeJS.Timeout = setTimeout(() => {
+                if(req) req.destroy();
+            }, this.ProxyMaxTimeout);
 
-            const options : http.RequestOptions = {
-                hostname: 'example.com',
-                port: 443,
-                path: '/path',
-                method: 'GET',
-                socket: sock
-            };            
+            req = https.get(`https://${proxy.ip}:${proxy.port}/https://example.com/`, (res : http.IncomingMessage) => {
+                clearTimeout(timeoutId);
+                console.log("Response from proxy " + res.statusCode);
 
-        } catch (err) {
-            // some error log
-            return false;
-        };
-          
-        return true;
+                let valid : boolean = res.statusCode === 200;
+                resolv(valid);
+                if(cb) cb(valid);
+            });
+
+            req.on("error", (err : Error) => {
+                if(cb) cb(false);
+                resolv(false);
+            });
+            req.end();
+        });
+    };
+
+    public reset() : void {
+        this.proxys = [];
+        this.validProxys = [];
     };
 
 };

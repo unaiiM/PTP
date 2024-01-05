@@ -1,4 +1,4 @@
-import { EventEmitter } from "stream";
+import { EventEmitter } from "events";
 
 export interface RequestLine {
     method : string;
@@ -104,7 +104,7 @@ export default class HttpParser extends EventEmitter {
                 this.requestLength += this.contentLength;
             };
 
-            this.request.headers = headers;
+            this.proto.headers = headers;
             this.emit("headers", headers);
         }else {          
             if(this.data.indexOf(this.EndOfHeadersDelimiter) !== -1) this.isEndOfHeaders = true;
@@ -131,9 +131,9 @@ export default class HttpParser extends EventEmitter {
     private getBody() : void {
         let body : string = this.data.slice(-this.contentLength);
 
-        this.request.body = body;
+        this.proto.body = body;
         this.emit("body", body);
-        this.emit("end", this.request as Request);
+        this.emit("end", this.proto);
         this.reset();
     };
 
@@ -156,5 +156,9 @@ export default class HttpParser extends EventEmitter {
         if(options.body) request += options.body;
 
         return request;
+    };
+
+    public static isResponse(struct : Request | Response) : boolean {
+        return 'statusLine' in struct;
     };
 };
