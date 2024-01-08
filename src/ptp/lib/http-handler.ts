@@ -45,7 +45,7 @@ export default class HttpHandler extends EventEmitter {
         body: options.body,
       };
       let req : string = HttpParser.build(parserOptions);
-      console.log(req);
+      console.log(JSON.stringify(req));
       this.socket.write(req);
     };
 };

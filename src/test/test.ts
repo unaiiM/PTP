@@ -78,18 +78,17 @@ const socksOptions : SocksClientOptions = {
 
 try {
     SocksClient.createConnection(socksOptions).then((info) => {
-        const tlsSocket = tls.connect({ socket: info.socket, rejectUnauthorized: false, ALPNProtocols: ["h2", "http/1.1"]}, () => {
+        const tlsSocket = tls.connect({ socket: info.socket, rejectUnauthorized: false }, () => {
             console.log("TLS connection done!");
-            console.log(tlsSocket.alpnProtocol);
 
             const options : RequestOptions = {
                 method: "GET",
                 path: "/",
-                version: "HTTP/2",
+                version: "HTTP/1.1",
                 headers: {
                     "Host": "example.com",
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
-                    "Accept:": "*/*",
+                    "Accept": "*/*",
                 },
             };
             const handler : HttpHandler = new HttpHandler(tlsSocket);

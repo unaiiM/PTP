@@ -145,7 +145,7 @@ export default class HttpParser extends EventEmitter {
     public static build(options : Request) : string {
         let request : string = options.requestLine.method + " " +
             options.requestLine.path + " " +
-            options.requestLine.version + " " +
+            options.requestLine.version +
             this.SampleDelimiter;
         let isContentLength : boolean = false;
 
