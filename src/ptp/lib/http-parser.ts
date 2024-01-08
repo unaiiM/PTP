@@ -34,9 +34,9 @@ export interface Response {
 export default class HttpParser extends EventEmitter {
 
     private EndOfHeadersDelimiter = "\n\r\n\r";
-    private SampleDelimiter = "\n\r";
-    private static EndOfHeadersDelimiter = "\n\r\n\r";
-    private static SampleDelimiter = "\n\r";
+    private SampleDelimiter = "\r\n";
+    private static EndOfHeadersDelimiter = "\r\n\r\n";
+    private static SampleDelimiter = "\r\n";
 
     private proto : Request | Response;
     private data : string = "";
@@ -143,15 +143,21 @@ export default class HttpParser extends EventEmitter {
     };
 
     public static build(options : Request) : string {
-        let request : string = Object.values(options.requestLine).join(" ") + this.SampleDelimiter;
+        let request : string = options.requestLine.method + " " +
+            options.requestLine.path + " " +
+            options.requestLine.version + " " +
+            this.SampleDelimiter;
         let isContentLength : boolean = false;
 
-        for(const header in options.headers){
+        const headers : string[] = Object.keys(options.headers);
+        for(let i : number = 0; i < headers.length; i++){
+            const header : string = headers[i];
             if(header.toLowerCase() === "content-length") isContentLength = true;
-            request += header + options.headers[header] + this.SampleDelimiter;
+            request += header + ": " + options.headers[header];
+            if(i + 1 < headers.length) request += this.SampleDelimiter;
         };
 
-        if(options.body && !isContentLength) request += "Content-Length: " + options.body.length + this.SampleDelimiter;
+        if(options.body && !isContentLength) request += this.SampleDelimiter + "Content-Length: " + options.body.length;
         request += this.EndOfHeadersDelimiter;
         if(options.body) request += options.body;
 

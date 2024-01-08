@@ -1,6 +1,9 @@
 import * as http from "http";
 import * as https from "https";
 import { EventEmitter } from "events";
+import { SocksClient, SocksClientOptions, SocksClientChainOptions } from 'socks';
+import * as tls from "tls";
+import HttpHandler, { RequestOptions } from "./http-handler.js";
 
 export interface Options {
     protocol : string;
@@ -18,7 +21,9 @@ export interface Proxy {
 export type ProxyList = Proxy[];
 
 /**
- * Example Url: https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all
+ * Example Url: https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks5&timeout=10000&country=all&ssl=yes&anonymity=all
+ * Notes:
+ *  - When trying a proxy it would be better to save the timeout to in future use the fastest one.
  */
 export default class ProxyScrape extends EventEmitter {
 
@@ -60,10 +65,10 @@ export default class ProxyScrape extends EventEmitter {
 
     public constructor(options : Partial<Options> = {}){
         super();
-        this.protocol = options.protocol ?? "https";
+        this.protocol = options.protocol ?? "socks5";
         this.timeout = options.timeout ?? 10000;
         this.country = options.country ?? "all";
-        this.ssl = options.ssl ?? "all";
+        this.ssl = options.ssl ?? "yes";
         this.anonymity = options.anonymity ?? "all";
         this.generate();
     };
@@ -104,24 +109,46 @@ export default class ProxyScrape extends EventEmitter {
         this.emit("loaded");
     };
 
-    public async findValidProxys(){
-        let done : number = 0;
-        
-        for(let i = 0; i < this.MaxQueueProxyTest; i++){
-            this.tryProxy(this.proxys[i], (valid : boolean) => {
-
-            });
+    public async findValidProxys() : Promise<void> {
+        for(let done = 0; done < this.proxys.length;){
+            let proxys : ProxyList = this.proxys.slice(done, done += this.MaxQueueProxyTest);
+            let valid : ProxyList = await this.tryRangeOfProxys(proxys);
+            this.validProxys = this.validProxys.concat(valid);
         };
     };
 
-    public async tryProxy(proxy : Proxy, cb? : (valid : boolean) => void) : Promise<boolean> {
+    private tryRangeOfProxys(proxys : ProxyList) : Promise<ProxyList> {
+        let done : number = 0;
+        let validProxys : ProxyList = [];
         return new Promise((resolv, reject) => {
-            let req : http.ClientRequest;
+            proxys.forEach(proxy => {
+                this.tryProxy(proxy, (valid : boolean) => {
+                    console.log("Proxy " + done + " tried is " + valid);
+                    if(valid){
+                        this.emit("found", proxy);
+                    };
+                    if(++done === proxys.length) resolv(validProxys);
+                });
+            });
+        });
+    };
+
+    public tryProxy(proxy : Proxy, cb? : (valid : boolean) => void) : Promise<boolean> {
+        return new Promise( async (resolv, reject) => {
+            /*let req : http.ClientRequest;
             let timeoutId : NodeJS.Timeout = setTimeout(() => {
                 if(req) req.destroy();
             }, this.ProxyMaxTimeout);
 
-            req = https.get(`https://${proxy.ip}:${proxy.port}/https://example.com/`, (res : http.IncomingMessage) => {
+            const options : https.RequestOptions = {
+                host: proxy.ip, 
+                port: proxy.port,
+                path: 'https://example.com/',
+                method: 'GET',
+                rejectUnauthorized: false
+            };
+
+            req = https.request(options, (res : http.IncomingMessage) => {
                 clearTimeout(timeoutId);
                 console.log("Response from proxy " + res.statusCode);
 
@@ -131,10 +158,50 @@ export default class ProxyScrape extends EventEmitter {
             });
 
             req.on("error", (err : Error) => {
+                console.log(err);
                 if(cb) cb(false);
                 resolv(false);
             });
-            req.end();
+            req.end();*/
+
+            const socksOptions : SocksClientOptions = {
+                proxy: {
+                  host: proxy.ip,
+                  port: proxy.port,
+                  type: 5
+                },
+              
+                command: 'connect',
+              
+                destination: {
+                  host: 'example.com',
+                  port: 443
+                }
+            };
+
+            try {
+                const info = await SocksClient.createConnection(socksOptions);
+                const tlsSocket = tls.connect({ socket: info.socket }, () => {
+                    console.log("TLS connection done!");
+
+                    const options : RequestOptions = {
+                        method: "GET",
+                        path: "http://example.com/",
+                        headers: {
+                            "Host": "example.com",
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+                        },
+                    };
+                    const handler : HttpHandler = new HttpHandler(tlsSocket);
+                    tlsSocket.on("data", (buff) => console.log(buff.toString()));
+                    handler.request(options);
+                });
+                console.log(info.socket);
+
+            } catch (err) {
+                // Handle errors
+            }
+
         });
     };
 
