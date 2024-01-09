@@ -30,7 +30,7 @@ export default class HttpHandler extends EventEmitter {
 
       this.socket = sock;
       this.socket.on("data", (buff : Buffer) => {
-        console.log(buff.length);
+        this.parser.next(buff);
       });
     };
 

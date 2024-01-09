@@ -135,35 +135,6 @@ export default class ProxyScrape extends EventEmitter {
 
     public tryProxy(proxy : Proxy, cb? : (valid : boolean) => void) : Promise<boolean> {
         return new Promise( async (resolv, reject) => {
-            /*let req : http.ClientRequest;
-            let timeoutId : NodeJS.Timeout = setTimeout(() => {
-                if(req) req.destroy();
-            }, this.ProxyMaxTimeout);
-
-            const options : https.RequestOptions = {
-                host: proxy.ip, 
-                port: proxy.port,
-                path: 'https://example.com/',
-                method: 'GET',
-                rejectUnauthorized: false
-            };
-
-            req = https.request(options, (res : http.IncomingMessage) => {
-                clearTimeout(timeoutId);
-                console.log("Response from proxy " + res.statusCode);
-
-                let valid : boolean = res.statusCode === 200;
-                resolv(valid);
-                if(cb) cb(valid);
-            });
-
-            req.on("error", (err : Error) => {
-                console.log(err);
-                if(cb) cb(false);
-                resolv(false);
-            });
-            req.end();*/
-
             const socksOptions : SocksClientOptions = {
                 proxy: {
                   host: proxy.ip,
@@ -179,29 +150,21 @@ export default class ProxyScrape extends EventEmitter {
                 }
             };
 
-            try {
-                const info = await SocksClient.createConnection(socksOptions);
-                const tlsSocket = tls.connect({ socket: info.socket }, () => {
-                    console.log("TLS connection done!");
+            const info = await SocksClient.createConnection(socksOptions);
+            const tlsSocket = tls.connect({ socket: info.socket }, () => {
+                console.log("TLS connection done!");
 
-                    const options : RequestOptions = {
-                        method: "GET",
-                        path: "http://example.com/",
-                        headers: {
-                            "Host": "example.com",
-                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
-                        },
-                    };
-                    const handler : HttpHandler = new HttpHandler(tlsSocket);
-                    tlsSocket.on("data", (buff) => console.log(buff.toString()));
-                    handler.request(options);
-                });
-                console.log(info.socket);
-
-            } catch (err) {
-                // Handle errors
-            }
-
+                const options : RequestOptions = {
+                    method: "GET",
+                    path: "http://example.com/",
+                    headers: {
+                        "Host": "example.com",
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+                    },
+                };
+                const handler : HttpHandler = new HttpHandler(tlsSocket);
+                handler.request(options);
+            });
         });
     };
 
