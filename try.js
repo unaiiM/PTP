@@ -7,6 +7,8 @@ cert:fs.readFileSync('./cert/cert.pem'),
 };
 console.log(options.key);
 https.createServer(options, (req, res) => {
-    res.writeHead(200);
-    res.end(`hello world\n`);
-  }).listen(8000);
+  console.log(req.httpVersion, req.url, req.headers);  
+  res.writeHead(200);
+  res.end(`hello world\n`);
+  req.on("end", () => console.log("aaaaaaaaaa"));
+}).listen(8000);

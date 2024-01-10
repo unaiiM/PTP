@@ -120,6 +120,10 @@ export default class ProxyScrape extends EventEmitter {
             let proxys : ProxyList = this.proxys.slice(done, len);
             let valid : ProxyList = await this.tryRangeOfProxys(proxys);
             this.validProxys = this.validProxys.concat(valid);
+            if(this.validProxys.length > 0){
+                console.log("Force stop valid proxies search!");
+                break; 
+            } // temporary, to make tests
         };
     };
 
@@ -129,7 +133,10 @@ export default class ProxyScrape extends EventEmitter {
         return new Promise((resolv, reject) => {
             proxys.forEach(proxy => {
                 this.tryProxy(proxy, (valid : boolean) => {
-                    if(valid) this.emit("found", proxy);
+                    if(valid){
+                        validProxys.push(proxy);
+                        this.emit("found", proxy);
+                    };
                     if(++done === proxys.length) resolv(validProxys);
                 });
             });

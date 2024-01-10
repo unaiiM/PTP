@@ -1,14 +1,35 @@
-import ProxyScrape, { Proxy } from "../ptp/lib/proxy-scrape.js";
+import ProxyHandler, { Options } from "../ptp/lib/proxy-handler.js";
+import * as fs from "fs";
 
-const scrape : ProxyScrape = new ProxyScrape();
+const options : Options = {
+    host: '0.0.0.0',
+    port: 4445,
+    key: fs.readFileSync(String.raw`C:\Users\usuario\Documents\Unai\Proj\PTP\cert\key.pem`),
+    cert: fs.readFileSync(String.raw`C:\Users\usuario\Documents\Unai\Proj\PTP\cert\cert.pem`),
+    tor: {
+        host: '172.30.107.164',
+        port: 9050,
+    },
+};
+console.log(options.key);
+const ph : ProxyHandler = new ProxyHandler(options);
 
-scrape.on("loaded", () => {
-    console.log(scrape.proxys);
-    scrape.findValidProxys();
+/*import * as https from "https";
+import * as fs from "fs";
+
+const options : https.ServerOptions = {
+    key: fs.readFileSync(String.raw`C:\Users\usuario\Documents\Unai\Proj\PTP\cert\key.pem`),
+    cert: fs.readFileSync(String.raw`C:\Users\usuario\Documents\Unai\Proj\PTP\cert\cert.pem`),
+    rejectUnauthorized: false, // don't know why, but just in case
+};
+const server : https.Server = https.createServer(options, (req, res) => {
+    console.log(req.httpVersion, req.url, req.headers);  
+    res.writeHead(200);
+    res.end(`hello world\n`);
 });
 
-scrape.on("found", (proxy : Proxy) => {
-    console.log("Valid proxy found: ", proxy);
-});
-
-scrape.getProxys();
+server.listen(4445, 
+    "127.0.0.1", 
+    () => {
+        console.log("Https proxy server successfully listening!");
+    });*/
