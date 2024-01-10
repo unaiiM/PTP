@@ -4,6 +4,8 @@ import { EventEmitter } from "events";
 import { SocksClient, SocksClientOptions, SocksClientChainOptions } from 'socks';
 import * as tls from "tls";
 import HttpHandler, { RequestOptions } from "./http-handler.js";
+import { Request, Response } from "./http-parser.js";
+import { SocksClientEstablishedEvent } from "socks/typings/common/constants.js";
 
 export interface Options {
     protocol : string;
@@ -57,7 +59,7 @@ export default class ProxyScrape extends EventEmitter {
     public anonymity : string;
 
 
-    private ProxyMaxTimeout = 4000;
+    private ProxyMaxTimeout = 6000;
     private MaxQueueProxyTest = 5;
     private url : string = "https://api.proxyscrape.com/v2/";
     public proxys : ProxyList; 
@@ -110,8 +112,12 @@ export default class ProxyScrape extends EventEmitter {
     };
 
     public async findValidProxys() : Promise<void> {
-        for(let done = 0; done < this.proxys.length;){
-            let proxys : ProxyList = this.proxys.slice(done, done += this.MaxQueueProxyTest);
+        for(let done = 0; done < this.proxys.length; done += this.MaxQueueProxyTest){
+            let len : number = done;
+            if(done + this.MaxQueueProxyTest > this.proxys.length) len += (done + this.MaxQueueProxyTest) - this.proxys.length;
+            else len += this.MaxQueueProxyTest;
+
+            let proxys : ProxyList = this.proxys.slice(done, len);
             let valid : ProxyList = await this.tryRangeOfProxys(proxys);
             this.validProxys = this.validProxys.concat(valid);
         };
@@ -123,10 +129,7 @@ export default class ProxyScrape extends EventEmitter {
         return new Promise((resolv, reject) => {
             proxys.forEach(proxy => {
                 this.tryProxy(proxy, (valid : boolean) => {
-                    console.log("Proxy " + done + " tried is " + valid);
-                    if(valid){
-                        this.emit("found", proxy);
-                    };
+                    if(valid) this.emit("found", proxy);
                     if(++done === proxys.length) resolv(validProxys);
                 });
             });
@@ -135,6 +138,25 @@ export default class ProxyScrape extends EventEmitter {
 
     public tryProxy(proxy : Proxy, cb? : (valid : boolean) => void) : Promise<boolean> {
         return new Promise( async (resolv, reject) => {
+            let info : SocksClientEstablishedEvent;
+            let tlsSocket : tls.TLSSocket;
+            
+            /**
+             * Temporary, this is relly bad, bcs imagine the socks connection
+             * takes more than the maxiumum specified timeout, then the timeout
+             * wouldn't be executed after the socks connection responds with some
+             * error or something. Make a thread and killing it when timeout
+             * ends will be a good solution, bcs the new thread will create a 
+             * new Agent and a new Execution Thread, making the timeout independent
+             * of the await blocking.
+             */
+            const timeoutId : NodeJS.Timeout = setTimeout(() => {
+                if(tlsSocket) tlsSocket.destroy();
+                if(info?.socket) info.socket.destroy();
+                cb(false);
+                resolv(false);
+            }, this.ProxyMaxTimeout);
+            
             const socksOptions : SocksClientOptions = {
                 proxy: {
                   host: proxy.ip,
@@ -149,22 +171,34 @@ export default class ProxyScrape extends EventEmitter {
                   port: 443
                 }
             };
+            try {
+                info = await SocksClient.createConnection(socksOptions);
+                tlsSocket = tls.connect({ socket: info.socket, rejectUnauthorized: false }, () => {
+                    console.log("TLS connection done!");
 
-            const info = await SocksClient.createConnection(socksOptions);
-            const tlsSocket = tls.connect({ socket: info.socket }, () => {
-                console.log("TLS connection done!");
-
-                const options : RequestOptions = {
-                    method: "GET",
-                    path: "http://example.com/",
-                    headers: {
-                        "Host": "example.com",
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
-                    },
-                };
-                const handler : HttpHandler = new HttpHandler(tlsSocket);
-                handler.request(options);
-            });
+                    const options : RequestOptions = {
+                        method: "GET",
+                        path: "/",
+                        headers: {
+                            "Host": "example.com",
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+                        },
+                    };
+                    const handler : HttpHandler = new HttpHandler(tlsSocket);
+                    handler.on("end", (info : Response) => {
+                        console.log(info.statusLine);
+                        let valid : boolean = info.statusLine.status === 200;
+                        cb(valid);
+                        resolv(valid);
+                        clearTimeout(timeoutId);
+                    });
+                    handler.request(options);
+                });
+            } catch(err : any){
+                console.log("Error");
+                cb(false);
+                resolv(false);
+            };
         });
     };
 

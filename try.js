@@ -1,28 +1,12 @@
-import * as tls from "tls";
+import * as https from "https";
+import * as fs from "fs";
 
-/*import { SocksClient } from 'socks';
-
-const socksOptions = {
-    proxy: {
-      host: "98.178.72.21",
-      port: 10919,
-      type: 5
-    },
-  
-    command: 'connect',
-  
-    destination: {
-      host: 'example.com',
-      port: 443
-    }
+const options = {
+key:fs.readFileSync('./cert/key.pem'),
+cert:fs.readFileSync('./cert/cert.pem'),
 };
-
-    SocksClient.createConnection(socksOptions).then((info) => {*/
-        const tlsSocket = tls.connect({ host: 'example.com', port: 443, rejectUnauthorized: false }, () => {
-            console.log("TLS connection done!");
-            console.log(tlsSocket.alpnProtocol);
-
-            tlsSocket.on("data", (buff) => console.log(buff.toString()));
-	    tlsSocket.write("GET / HTTP/1.1\r\nHost: example.com\r\nUser-Agent: curl\r\n\r\n")
-        });
-    //});
+console.log(options.key);
+https.createServer(options, (req, res) => {
+    res.writeHead(200);
+    res.end(`hello world\n`);
+  }).listen(8000);

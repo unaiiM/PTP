@@ -21,11 +21,8 @@ export default class HttpHandler extends EventEmitter {
     constructor(sock : tls.TLSSocket | net.Socket){
       super();
 
-      this.parser.on("end", (res : Response) =>  {
-        console.log("End recived!");
-        if(HttpParser.isResponse(res)){
-          console.log(res.statusLine);
-        };
+      this.parser.on("end", (struct : Response | Request) =>  {
+        this.emit("end", struct);
       });
 
       this.socket = sock;

@@ -33,12 +33,12 @@ export interface Response {
  */
 export default class HttpParser extends EventEmitter {
 
-    private EndOfHeadersDelimiter = "\n\r\n\r";
+    private EndOfHeadersDelimiter = "\r\n\r\n";
     private SampleDelimiter = "\r\n";
     private static EndOfHeadersDelimiter = "\r\n\r\n";
     private static SampleDelimiter = "\r\n";
 
-    private proto : Request | Response;
+    private proto : Partial<Request> & Partial<Response> = {};
     private data : string = "";
     private isEndOfHeaders : boolean = false;
     private isBody : boolean = false;
@@ -51,13 +51,15 @@ export default class HttpParser extends EventEmitter {
         super();
     };
 
-    public next(chunk : Buffer | string) : void {
+    public next(chunk : Buffer | string = "") : void {
         this.data += (chunk instanceof Buffer) ? chunk.toString() : chunk;
 
         if(this.isEndOfFirstLine){
-            this.checkHeaders();
-
-            if(this.isBody && this.data.length >= this.requestLength) this.getBody();
+            if(this.isEndOfHeaders) {
+                if(this.isBody){
+                    if(this.data.length >= this.requestLength) this.getBody();
+                }else this.end();
+            }else this.checkHeaders();   
         }else this.checkFirstLine();
     };
 
@@ -74,30 +76,34 @@ export default class HttpParser extends EventEmitter {
                     status: parseInt(line[1]),
                     message: line[2]
                 };
-
+                this.proto.statusLine = statusLine;
                 this.emit("statusLine", statusLine);
             }else {
                 let requestLine : RequestLine = {
                     method: line[0],
                     path: line[1],
-                    version: line[2]
+                    version: line[2],
                 };
-                
+                this.proto.requestLine = requestLine;
                 this.emit("requestLine", requestLine);
             };
 
             this.isEndOfFirstLine = true;
+            this.next();
         };
     };
 
     private checkHeaders() : void {
+
+        if(!this.isEndOfHeaders && this.data.indexOf(this.EndOfHeadersDelimiter) !== -1) this.isEndOfHeaders = true;
+
         if(this.isEndOfHeaders){
             let headers : Headers = this.getHeaders();
             let keys : string[] = Object.keys(headers);
             let index : number = keys.indexOf("content-length"); 
 
             this.requestLength = this.data.indexOf(this.EndOfHeadersDelimiter) + this.EndOfHeadersDelimiter.length;
-            
+
             if(index !== -1){
                 this.isBody = true;
                 this.contentLength = parseInt(headers[keys[index]]);
@@ -106,9 +112,6 @@ export default class HttpParser extends EventEmitter {
 
             this.proto.headers = headers;
             this.emit("headers", headers);
-        }else {          
-            if(this.data.indexOf(this.EndOfHeadersDelimiter) !== -1) this.isEndOfHeaders = true;
-            this.checkHeaders();
         };
     };
 
@@ -117,8 +120,7 @@ export default class HttpParser extends EventEmitter {
         let splitedHeaders : string[] = this.data.slice(
             this.data.indexOf(this.SampleDelimiter) + this.SampleDelimiter.length,  // avoid the request line
             this.data.indexOf(this.EndOfHeadersDelimiter))
-            .split(this.SampleDelimiter)
-            .slice(0, -1);  // every header has \n\r then there will be an empty item, remove it
+            .split(this.SampleDelimiter);
 
         splitedHeaders.forEach((header : string) => {
             let foo : string[] = header.split(":");
@@ -133,7 +135,11 @@ export default class HttpParser extends EventEmitter {
 
         this.proto.body = body;
         this.emit("body", body);
-        this.emit("end", this.proto);
+        this.end();
+    };
+
+    private end() : void {
+        this.emit("end", <Request | Response> this.proto);
         this.reset();
     };
 
