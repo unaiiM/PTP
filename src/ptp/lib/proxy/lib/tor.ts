@@ -1,18 +1,18 @@
-import SocksHandler, { ConnectOptions as SocksHandlerConnectOptions, Version } from "./socks-handler.js";
-import { Destination } from "./types.js";
 import * as net from "net";
+import { SocksHandler, ConnectOptions as SocksHandlerConnectOptions, Version } from "./socks.js";
+import { Destination } from "./types.js";
 
-export interface Options {
+export interface TorOptions {
     host : string;
     port : number;
     version? : Version; // socks version
 }
 
-export default class Tor {
+export class Tor {
     
-    private options : Options;
+    private options : TorOptions;
     
-    constructor(options : Options){
+    constructor(options : TorOptions){
         this.options = options;
     };
 

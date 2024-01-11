@@ -1,4 +1,4 @@
-import ProxyHandler, { Options } from "../ptp/lib/proxy-handler.js";
+import { ProxyHandler, Options } from "@lib/proxy";
 import * as fs from "fs";
 
 const options : Options = {

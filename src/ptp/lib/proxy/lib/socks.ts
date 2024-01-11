@@ -1,8 +1,8 @@
-import { Destination, Proxy, Route } from "./types.js";
 import * as net from "net";
+import { EventEmitter } from "events";
 import { SocksClient, SocksClientOptions, SocksClientChainOptions } from 'socks';
 import { SocksClientEstablishedEvent, SocksProxyType as _Version } from "socks/typings/common/constants.js";
-import { EventEmitter } from "events";
+import { Destination, Proxy, Route } from "./types.js";
 
 export type Version = _Version;
 
@@ -12,11 +12,11 @@ export interface ConnectOptions {
     destination : Destination;
 };
 
-export interface Options extends Route {
+export interface SocksOptions extends Route {
     version: Version
 };
 
-export default class SocksHandler extends EventEmitter {
+export class SocksHandler extends EventEmitter {
     public static connect(options : ConnectOptions, socket? : net.Socket) : Promise<net.Socket> {
         return new Promise(async (resolv, reject) => {
             let socksOptions : SocksClientOptions = {
@@ -45,7 +45,7 @@ export default class SocksHandler extends EventEmitter {
 
     private socket : net.Socket;
 
-    constructor(options : Options){
+    constructor(options : SocksOptions){
         super();
         const conn : ConnectOptions = {
             proxy: options.proxy,

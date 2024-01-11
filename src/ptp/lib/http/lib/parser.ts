@@ -1,4 +1,5 @@
 import { EventEmitter } from "events";
+import { Headers } from "./types.js";
 
 export interface RequestLine {
     method : string;
@@ -12,8 +13,6 @@ export interface StatusLine {
     message : string;
 };
 
-export type Headers = Record<string, string>;
-
 export interface Request {
     requestLine : RequestLine;
     headers : Headers;
@@ -26,17 +25,18 @@ export interface Response {
     body? : string;
 };
 
+const EndOfHeadersDelimiter : string = "\r\n\r\n";
+const SampleDelimiter : string = "\r\n";
+
 /**
  * Notes:
  *  - Headers never can be 0 bcs the Host header is required on http protocol, if is not
  *    specified the server must return 400 response.
  */
-export default class HttpParser extends EventEmitter {
+export class HttpParser extends EventEmitter {
 
-    private EndOfHeadersDelimiter = "\r\n\r\n";
-    private SampleDelimiter = "\r\n";
-    private static EndOfHeadersDelimiter = "\r\n\r\n";
-    private static SampleDelimiter = "\r\n";
+    private EndOfHeadersDelimiter = EndOfHeadersDelimiter;
+    private SampleDelimiter = SampleDelimiter;
 
     private proto : Partial<Request> & Partial<Response> = {};
     private data : string = "";
@@ -152,7 +152,7 @@ export default class HttpParser extends EventEmitter {
         let request : string = options.requestLine.method + " " +
             options.requestLine.path + " " +
             options.requestLine.version +
-            this.SampleDelimiter;
+            SampleDelimiter;
         let isContentLength : boolean = false;
 
         const headers : string[] = Object.keys(options.headers);
@@ -160,11 +160,11 @@ export default class HttpParser extends EventEmitter {
             const header : string = headers[i];
             if(header.toLowerCase() === "content-length") isContentLength = true;
             request += header + ": " + options.headers[header];
-            if(i + 1 < headers.length) request += this.SampleDelimiter;
+            if(i + 1 < headers.length) request += SampleDelimiter;
         };
 
-        if(options.body && !isContentLength) request += this.SampleDelimiter + "Content-Length: " + options.body.length;
-        request += this.EndOfHeadersDelimiter;
+        if(options.body && !isContentLength) request += SampleDelimiter + "Content-Length: " + options.body.length;
+        request += EndOfHeadersDelimiter;
         if(options.body) request += options.body;
 
         return request;

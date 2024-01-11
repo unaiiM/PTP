@@ -1,23 +1,18 @@
 import * as http from "http";
 import * as https from "https";
+import * as tls from "tls";
 import { EventEmitter } from "events";
 import { SocksClient, SocksClientOptions, SocksClientChainOptions } from 'socks';
-import * as tls from "tls";
-import HttpHandler, { RequestOptions } from "./http-handler.js";
-import { Request, Response } from "./http-parser.js";
+import { HttpHandler, RequestOptions, Response } from "@lib/http";
 import { SocksClientEstablishedEvent } from "socks/typings/common/constants.js";
+import { Proxy } from "./types.js";
 
-export interface Options {
+export interface ScrapeOptions {
     protocol : string;
     timeout : number;
     country : string;
     ssl : string;
     anonymity : string;
-};
-
-export interface Proxy {
-    ip : string;
-    port : number;
 };
 
 export type ProxyList = Proxy[];
@@ -27,7 +22,7 @@ export type ProxyList = Proxy[];
  * Notes:
  *  - When trying a proxy it would be better to save the timeout to in future use the fastest one.
  */
-export default class ProxyScrape extends EventEmitter {
+export class ProxyScrape extends EventEmitter {
 
     /**
      * displayproxies: display the proxies in the browser
@@ -65,7 +60,7 @@ export default class ProxyScrape extends EventEmitter {
     public proxys : ProxyList; 
     public validProxys : ProxyList;
 
-    public constructor(options : Partial<Options> = {}){
+    public constructor(options : Partial<ScrapeOptions> = {}){
         super();
         this.protocol = options.protocol ?? "socks5";
         this.timeout = options.timeout ?? 10000;

@@ -1,13 +1,12 @@
-import ProxyScrape, { ProxyList, Proxy } from "./proxy-scrape.js";
 import * as https from "https";
 import * as http from "http";
 import * as net from "net";
-import HttpParser, { Request, Headers } from "./http-parser.js";
+import { ProxyScrape, ProxyList } from "./scrape.js";
+import { Proxy } from "./types.js";
+import { HttpParser, Request, Headers } from "@lib/http";
 import { Destination } from "./types.js";
-import Tor, { Options as _TorOptions } from "./tor-handler.js";
-import SocksHandler, { Options as SocksHandlerOptions } from "./socks-handler.js";
-
-export type TorOptions = _TorOptions;
+import { Tor, TorOptions } from "./tor.js";
+import { SocksHandler, SocksOptions } from "./socks.js";
 
 export interface Options {
     host : string;
@@ -17,7 +16,7 @@ export interface Options {
     tor: TorOptions;
 };
 
-export default class ProxyHandler {
+export class ProxyHandler {
   
     private listening : boolean = false;
     private server : https.Server;
@@ -82,7 +81,7 @@ export default class ProxyHandler {
                 port: this.scrape.validProxys[0].port,
             };
             const torSocket : net.Socket = await this.tor.connect(proxy);
-            const socksHandlerOptions : SocksHandlerOptions = {
+            const socksHandlerOptions : SocksOptions = {
                 tor: torSocket,
                 proxy: this.scrape.validProxys[0],
                 version: 5,

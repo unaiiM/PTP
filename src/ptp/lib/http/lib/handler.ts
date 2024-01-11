@@ -1,9 +1,8 @@
 import * as tls from "tls";
 import * as net from "net";
-import HttpParser, { Headers as _Headers, Request, Response, RequestLine } from "./http-parser.js";
 import { EventEmitter } from "events";
-
-export type Headers = _Headers;
+import { HttpParser, Request, Response } from "./parser.js";
+import { Headers } from "./types.js";
 
 export interface RequestOptions {
   method : string,
@@ -13,7 +12,7 @@ export interface RequestOptions {
   body? : string;
 };
 
-export default class HttpHandler extends EventEmitter {
+export class HttpHandler extends EventEmitter {
 
     public socket : tls.TLSSocket | net.Socket;
     private parser : HttpParser = new HttpParser();

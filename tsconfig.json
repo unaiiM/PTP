@@ -3,6 +3,10 @@
         "target": "es6",
         "moduleResolution": "node",
         "rootDir": "src",
-        "outDir": "out"
+        "outDir": "out",
+        "baseUrl": "src",
+        "paths": {
+            "@lib/*": ["ptp/lib/*"]
+        }
     }
 }
