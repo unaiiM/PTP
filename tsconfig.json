@@ -1,10 +1,12 @@
 {
     "compilerOptions": {
         "target": "es6",
+        "module": "commonjs",
         "moduleResolution": "node",
         "rootDir": "src",
         "outDir": "out",
         "baseUrl": "src",
+        "esModuleInterop": true,
         "paths": {
             "@lib/*": ["ptp/lib/*"]
         }

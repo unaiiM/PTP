@@ -25,6 +25,7 @@ export class Tor {
             version: this.options.version ?? 5,
             destination: destination,
         };
+        
         return SocksHandler.connect(options);
     };
 };

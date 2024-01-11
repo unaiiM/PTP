@@ -19,6 +19,7 @@ export interface SocksOptions extends Route {
 export class SocksHandler extends EventEmitter {
     public static connect(options : ConnectOptions, socket? : net.Socket) : Promise<net.Socket> {
         return new Promise(async (resolv, reject) => {
+
             let socksOptions : SocksClientOptions = {
                 proxy: {
                     host: options.proxy.ip,
@@ -40,6 +41,7 @@ export class SocksHandler extends EventEmitter {
             } catch(err){
                 reject(err);
             };
+
         });
     };
 
@@ -47,11 +49,13 @@ export class SocksHandler extends EventEmitter {
 
     constructor(options : SocksOptions){
         super();
+        
         const conn : ConnectOptions = {
             proxy: options.proxy,
             version: options.version,
             destination: options.destination,
         };  
+
         SocksHandler.connect(conn, options.tor)
             .then((sock : net.Socket) => {
                 this.socket = sock;

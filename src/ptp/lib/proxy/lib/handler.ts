@@ -3,10 +3,12 @@ import * as http from "http";
 import * as net from "net";
 import { ProxyScrape, ProxyList } from "./scrape.js";
 import { Proxy } from "./types.js";
-import { HttpParser, Request, Headers } from "@lib/http";
+import { HttpParser, Request, Headers, UrlExtractor, UrlDestination } from "@lib/http";
 import { Destination } from "./types.js";
 import { Tor, TorOptions } from "./tor.js";
 import { SocksHandler, SocksOptions } from "./socks.js";
+
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 export interface Options {
     host : string;
@@ -40,9 +42,6 @@ export class ProxyHandler {
             this.proxys.push(proxy);
         });
 
-        this.server = https.createServer({
-
-        }, this.requestHandler);
         console.log("Server is waiting to start...");
         this.findNewProxys();
     };
@@ -52,7 +51,7 @@ export class ProxyHandler {
         this.scrape.getProxys();
     };
     
-    private requestHandler = (req : http.IncomingMessage, res : http.ServerResponse) => {
+    private handler = (req : http.IncomingMessage, res : http.ServerResponse) => {
         let body = '';
 
         req.on('data', (chunk : Buffer) => {
@@ -102,6 +101,22 @@ export class ProxyHandler {
         res.end(`hello world\n`);
     };
 
+    private connect(req : http.IncomingMessage, clientSocket : net.Socket, head : Buffer) : void {
+
+        console.log("CONNECT method recived!", head);
+        const url : URL = new URL(`http://${req.url}`);
+        const port : number = parseInt(url.port) || (url.protocol === "http:") ? 80 : 443;
+
+        const serverSocket = net.connect(port, url.hostname, () => {
+            clientSocket.write('HTTP/1.1 200 Connection Established\r\n' +
+                            'Proxy-agent: Node.js-Proxy\r\n' +
+                            '\r\n');
+            serverSocket.pipe(clientSocket);
+            clientSocket.pipe(serverSocket);
+        });
+
+    };
+
     private listen() : void {
         this.listening = true;
 
@@ -110,60 +125,13 @@ export class ProxyHandler {
             cert: this.options.cert,
             rejectUnauthorized: false, // don't know why, but just in case
         };
-        const server : https.Server = https.createServer(options, this.requestHandler);
-
-        server.listen(this.options.port, 
+        
+        this.server = https.createServer(options, this.handler);
+        this.server.on("connect", this.connect);
+        this.server.listen(this.options.port, 
             this.options.host ?? "127.0.0.1", 
             () => {
                 console.log("Https proxy server successfully listening!");
             });
-    };
-};
-
-interface UrlDestination {
-    host : string;
-    port? : number;
-}
-
-class UrlExtractor {
-
-    public url : string;
-    private isProtocolExtracted : boolean = false;
-
-    constructor(url : string){
-        this.url = url;
-    };
-
-    public protocol() : string {
-        if(this.isProtocolExtracted) return "";
-        let delimiter : string = "://";
-        let index : number = this.url.indexOf(delimiter);
-        let proto : string = this.url.slice(0, index);
-        this.url = this.url.slice(index + delimiter.length);
-        return proto;
-    };
-
-    /**
-     * To extract the host, first the protocol needs to be extracted
-     */
-    public host() : UrlDestination {
-        if(!this.isProtocolExtracted) this.protocol();
-        let index : number = this.url.indexOf("/");
-        let foo : string = this.url.slice(0, index);
-        this.url = this.url.slice(index);
-        index = foo.indexOf(":");
-        let dest : UrlDestination = {
-            host: "",
-        };
-
-        if(index === -1){
-            dest.host = foo;
-        }else {
-            let arr : string[] = foo.split(":");
-            dest.host = arr[0];
-            dest.port = parseInt(arr[1]);
-        };
-
-        return dest;
     };
 };

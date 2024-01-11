@@ -1,1 +1,3 @@
 - Implement CONNECT in local https proxy
+
+// curl --proxy-insecure -x https://127.0.0.1:4445 https://example.com
