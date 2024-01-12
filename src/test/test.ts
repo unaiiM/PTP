@@ -1,5 +1,5 @@
-import { ProxyHandler, Options } from "@lib/proxy";
-import * as fs from "fs";
+import { ProxyHandler, Options } from '@lib/proxy';
+import * as fs from 'fs';
 
 const options : Options = {
     host: '0.0.0.0',
@@ -7,15 +7,15 @@ const options : Options = {
     key: fs.readFileSync(String.raw`C:\Users\usuario\Documents\Unai\Proj\PTP\cert\key.pem`),
     cert: fs.readFileSync(String.raw`C:\Users\usuario\Documents\Unai\Proj\PTP\cert\cert.pem`),
     tor: {
-        host: '172.30.104.213',
+        host: '172.30.102.119',
         port: 9050,
     },
 };
-console.log(options.key);
+
 const ph : ProxyHandler = new ProxyHandler(options);
 
-/*import * as https from "https";
-import * as fs from "fs";
+/*import * as https from 'https';
+import * as fs from 'fs';
 
 const options : https.ServerOptions = {
     key: fs.readFileSync(String.raw`C:\Users\usuario\Documents\Unai\Proj\PTP\cert\key.pem`),
@@ -29,7 +29,7 @@ const server : https.Server = https.createServer(options, (req, res) => {
 });
 
 server.listen(4445, 
-    "127.0.0.1", 
+    '127.0.0.1', 
     () => {
-        console.log("Https proxy server successfully listening!");
+        console.log('Https proxy server successfully listening!');
     });*/

@@ -1,6 +1,10 @@
-import * as net from "net";
-import { SocksHandler, ConnectOptions as SocksHandlerConnectOptions, Version } from "./socks.js";
-import { Destination } from "./types.js";
+import * as net from 'net';
+import { 
+    SocksHandler, 
+    ConnectOptions as SocksHandlerConnectOptions, 
+    Version 
+} from './socks.js';
+import { Destination } from './types.js';
 
 export interface TorOptions {
     host : string;

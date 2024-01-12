@@ -1,4 +1,4 @@
-import * as net from "net";
+import * as net from 'net';
 
 export interface Destination {
     host : string;

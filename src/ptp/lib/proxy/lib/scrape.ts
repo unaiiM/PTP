@@ -1,11 +1,19 @@
-import * as http from "http";
-import * as https from "https";
-import * as tls from "tls";
-import { EventEmitter } from "events";
-import { SocksClient, SocksClientOptions, SocksClientChainOptions } from 'socks';
-import { HttpHandler, RequestOptions, Response } from "@lib/http";
-import { SocksClientEstablishedEvent } from "socks/typings/common/constants.js";
-import { Proxy } from "./types.js";
+import * as http from 'http';
+import * as https from 'https';
+import * as tls from 'tls';
+import { EventEmitter } from 'events';
+import { 
+    SocksClient, 
+    SocksClientOptions, 
+    SocksClientChainOptions 
+} from 'socks';
+import { 
+    HttpHandler, 
+    RequestOptions, 
+    Response 
+} from '@lib/http';
+import { SocksClientEstablishedEvent } from 'socks/typings/common/constants.js';
+import { Proxy } from './types.js';
 
 export interface ScrapeOptions {
     protocol : string;
@@ -28,7 +36,7 @@ export class ProxyScrape extends EventEmitter {
      * displayproxies: display the proxies in the browser
      * getproxies: download the proxies
      */
-    public readonly request : string = "displayproxies";
+    public readonly request : string = 'displayproxies';
     /**
      * Protocol of the proxies:
      * http, socks4, socks5 or all
@@ -46,7 +54,7 @@ export class ProxyScrape extends EventEmitter {
      * Should the proxies support SSL:
      * all, yes or no
      */
-    public ssl : string = "";
+    public ssl : string = '';
     /**
      * Define which anonymity level the proxies should have:
      * elite, anonymous, transparent or all
@@ -56,24 +64,24 @@ export class ProxyScrape extends EventEmitter {
 
     private ProxyMaxTimeout = 6000;
     private MaxQueueProxyTest = 5;
-    private url : string = "https://api.proxyscrape.com/v2/";
+    private url : string = 'https://api.proxyscrape.com/v2/';
     public proxys : ProxyList; 
     public validProxys : ProxyList;
 
     public constructor(options : Partial<ScrapeOptions> = {}){
         super();
-        this.protocol = options.protocol ?? "socks5";
+        this.protocol = options.protocol ?? 'socks5';
         this.timeout = options.timeout ?? 10000;
-        this.country = options.country ?? "all";
-        this.ssl = options.ssl ?? "yes";
-        this.anonymity = options.anonymity ?? "all";
+        this.country = options.country ?? 'all';
+        this.ssl = options.ssl ?? 'yes';
+        this.anonymity = options.anonymity ?? 'all';
         this.generate();
     };
 
     public generate() : void {
         let query : string = `request=${this.request}&protocol=${this.protocol}&timeout=${this.timeout}` +
         `&country=${this.country}&ssl=${this.ssl}&anonymity=${this.anonymity}`;
-        this.url += "?" + query;
+        this.url += '?' + query;
     };
 
     public async getProxys() : Promise<void> {
@@ -82,19 +90,19 @@ export class ProxyScrape extends EventEmitter {
         let content : string = await new Promise((resolv, reject) => {
             console.log(this.url);
             let req : http.ClientRequest = https.get(this.url, (res : http.IncomingMessage) => {
-                let content : string = "";
-                res.on("data", (buff : Buffer) => content += buff.toString());
-                res.on("end", () => {
+                let content : string = '';
+                res.on('data', (buff : Buffer) => content += buff.toString());
+                res.on('end', () => {
                     resolv(content);
                 });
             });
             req.end();
         });
 
-        let foo : string[] = content.split("\n");
+        let foo : string[] = content.split('\n');
 
         for(let str of foo){
-            let foo : string[] = str.split(":");
+            let foo : string[] = str.split(':');
             let proxy : Proxy = {
                 ip: foo[0],
                 port: parseInt(foo[1])
@@ -103,7 +111,7 @@ export class ProxyScrape extends EventEmitter {
             this.proxys.push(proxy);
         };
 
-        this.emit("loaded");
+        this.emit('loaded');
     };
 
     public async findValidProxys() : Promise<void> {
@@ -117,7 +125,7 @@ export class ProxyScrape extends EventEmitter {
             this.validProxys = this.validProxys.concat(valid);
 
             if(this.validProxys.length > 0){
-                console.log("Force stop valid proxies search!");
+                console.log('Force stop valid proxies search!');
                 break; 
             } // temporary, to make tests
         };
@@ -133,7 +141,7 @@ export class ProxyScrape extends EventEmitter {
                 this.tryProxy(proxy, (valid : boolean) => {
                     if(valid){
                         validProxys.push(proxy);
-                        this.emit("found", proxy);
+                        this.emit('found', proxy);
                     };
                     
                     if(++done === proxys.length) resolv(validProxys);
@@ -181,18 +189,18 @@ export class ProxyScrape extends EventEmitter {
             try {
                 info = await SocksClient.createConnection(socksOptions);
                 tlsSocket = tls.connect({ socket: info.socket, rejectUnauthorized: false }, () => {
-                    console.log("TLS connection done!");
+                    console.log('TLS connection done!');
 
                     const options : RequestOptions = {
-                        method: "GET",
-                        path: "/",
+                        method: 'GET',
+                        path: '/',
                         headers: {
-                            "Host": "example.com",
-                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+                            'Host': 'example.com',
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
                         },
                     };
                     const handler : HttpHandler = new HttpHandler(tlsSocket);
-                    handler.on("end", (info : Response) => {
+                    handler.on('end', (info : Response) => {
                         console.log(info.statusLine);
                         let valid : boolean = info.statusLine.status === 200;
                         cb(valid);
@@ -201,8 +209,10 @@ export class ProxyScrape extends EventEmitter {
                     });
                     handler.request(options);
                 });
+
+                tlsSocket.on('error', (err : Error) => console.log(err));
             } catch(err : any){
-                console.log("Error");
+                console.log('Error');
                 cb(false);
                 resolv(false);
             };

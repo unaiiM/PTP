@@ -1,8 +1,19 @@
-import * as net from "net";
-import { EventEmitter } from "events";
-import { SocksClient, SocksClientOptions, SocksClientChainOptions } from 'socks';
-import { SocksClientEstablishedEvent, SocksProxyType as _Version } from "socks/typings/common/constants.js";
-import { Destination, Proxy, Route } from "./types.js";
+import * as net from 'net';
+import { EventEmitter } from 'events';
+import { 
+    SocksClient, 
+    SocksClientOptions, 
+    SocksClientChainOptions 
+} from 'socks';
+import { 
+    SocksClientEstablishedEvent, 
+    SocksProxyType as _Version 
+} from 'socks/typings/common/constants.js';
+import { 
+    Destination, 
+    Proxy, 
+    Route 
+} from './types.js';
 
 export type Version = _Version;
 
@@ -21,8 +32,8 @@ export class SocksHandler extends EventEmitter {
         return new Promise(async (resolv, reject) => {
 
             let socksOptions : SocksClientOptions = {
-                proxy: {
-                    host: options.proxy.ip,
+                proxy: {    
+                    host: options.proxy.ip, 
                     port: options.proxy.port,
                     type: options.version,
                 },
@@ -60,12 +71,12 @@ export class SocksHandler extends EventEmitter {
             .then((sock : net.Socket) => {
                 this.socket = sock;
 
-                this.socket.on("close", () => {
-                    console.log("End proxy socket closed, closing tor socket too...");
+                this.socket.on('close', () => {
+                    console.log('End proxy socket closed, closing tor socket too...');
                     if(!options.tor.closed) options.tor.destroy();
                 });
 
-                this.emit("ready", sock);
+                this.emit('ready', sock);
             });
     };
 };
