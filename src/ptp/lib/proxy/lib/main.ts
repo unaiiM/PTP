@@ -23,8 +23,6 @@ import {
     SocksOptions 
 } from './socks.js';
 
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
 export interface Options {
     host : string;
     port : number;
@@ -33,7 +31,7 @@ export interface Options {
     tor: TorOptions;
 };
 
-export class ProxyHandler {
+export class LocalProxy {
   
     private listening : boolean = false;
     private server : https.Server;
@@ -51,13 +49,11 @@ export class ProxyHandler {
 
         this.scrape.on('found', (proxy : Proxy) => {
             if(!this.listening){
-                console.log('Setuping server!');
                 this.listen();
             };
             this.proxys.push(proxy);
         });
 
-        console.log('Server is waiting to start...');
         this.findNewProxys();
     };
 
@@ -104,7 +100,6 @@ export class ProxyHandler {
 
             const socksHandler : SocksHandler = new SocksHandler(socksHandlerOptions);
             socksHandler.on('ready', (sock : net.Socket) => {
-                console.log('Socket ready!');
                 sock.on('data', (buff : Buffer) => {
                     console.log(buff.toString());
                 });

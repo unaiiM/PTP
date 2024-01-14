@@ -72,7 +72,6 @@ export class SocksHandler extends EventEmitter {
                 this.socket = sock;
 
                 this.socket.on('close', () => {
-                    console.log('End proxy socket closed, closing tor socket too...');
                     if(!options.tor.closed) options.tor.destroy();
                 });
 

@@ -1,4 +1,4 @@
-import { ProxyHandler, Options } from '@lib/proxy';
+import { LocalProxy, Options } from '@lib/proxy';
 import * as fs from 'fs';
 
 const options : Options = {
@@ -12,7 +12,7 @@ const options : Options = {
     },
 };
 
-const ph : ProxyHandler = new ProxyHandler(options);
+const ph : LocalProxy = new LocalProxy(options);
 
 /*import * as https from 'https';
 import * as fs from 'fs';

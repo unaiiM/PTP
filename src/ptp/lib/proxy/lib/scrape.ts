@@ -88,7 +88,6 @@ export class ProxyScrape extends EventEmitter {
         this.reset();
 
         let content : string = await new Promise((resolv, reject) => {
-            console.log(this.url);
             let req : http.ClientRequest = https.get(this.url, (res : http.IncomingMessage) => {
                 let content : string = '';
                 res.on('data', (buff : Buffer) => content += buff.toString());
@@ -125,7 +124,6 @@ export class ProxyScrape extends EventEmitter {
             this.validProxys = this.validProxys.concat(valid);
 
             if(this.validProxys.length > 0){
-                console.log('Force stop valid proxies search!');
                 break; 
             } // temporary, to make tests
         };
@@ -189,8 +187,6 @@ export class ProxyScrape extends EventEmitter {
             try {
                 info = await SocksClient.createConnection(socksOptions);
                 tlsSocket = tls.connect({ socket: info.socket, rejectUnauthorized: false }, () => {
-                    console.log('TLS connection done!');
-
                     const options : RequestOptions = {
                         method: 'GET',
                         path: '/',
@@ -199,9 +195,9 @@ export class ProxyScrape extends EventEmitter {
                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
                         },
                     };
+
                     const handler : HttpHandler = new HttpHandler(tlsSocket);
                     handler.on('end', (info : Response) => {
-                        console.log(info.statusLine);
                         let valid : boolean = info.statusLine.status === 200;
                         cb(valid);
                         resolv(valid);
@@ -212,7 +208,6 @@ export class ProxyScrape extends EventEmitter {
 
                 tlsSocket.on('error', (err : Error) => console.log(err));
             } catch(err : any){
-                console.log('Error');
                 cb(false);
                 resolv(false);
             };
