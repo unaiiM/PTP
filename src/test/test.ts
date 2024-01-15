@@ -4,10 +4,10 @@ import * as fs from 'fs';
 const options : Options = {
     host: '0.0.0.0',
     port: 4445,
-    key: fs.readFileSync(String.raw`C:\Users\usuario\Documents\Unai\Proj\PTP\cert\key.pem`),
-    cert: fs.readFileSync(String.raw`C:\Users\usuario\Documents\Unai\Proj\PTP\cert\cert.pem`),
+    key: fs.readFileSync("./cert/v2/key.pem"),
+    cert: fs.readFileSync("./cert/v2/cert.pem"),
     tor: {
-        host: '172.30.106.9',
+        host: '172.26.41.85',
         port: 9050,
     },
 };

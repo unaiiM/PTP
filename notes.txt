@@ -1,3 +1,7 @@
 - Implement CONNECT in local https proxy
+- Change HTTPS local proxy to SOCKS, some browsers don't trust the certificate idk why
+- Before start the local proxy check tor
+- If some error is vinculed with tor connection, then stop the proxy and just wait to start up it again.
+- Check a lot of error handling
 
 // curl --proxy-insecure -x https://127.0.0.1:4445 https://example.com

@@ -20,7 +20,7 @@ export class Log {
     public static log(type : string, msg : string) : void {
         let str : string = `[${type}] ${msg}`;
         if(this.display) console.log(str);
-        fs.writeFileSync(this.file, str + "\n");
+        fs.appendFileSync(this.file, str + "\n");
     };
 
 };

@@ -34,7 +34,7 @@ export interface Options {
 export class LocalProxy {
   
     private listening : boolean = false;
-    private server : https.Server;
+    private server : http.Server;
     private proxys : ProxyList = [];
     private scrape : ProxyScrape = new ProxyScrape();
     private options : Options;
@@ -169,14 +169,8 @@ export class LocalProxy {
 
     private listen() : void {
         this.listening = true;
-
-        const options : https.ServerOptions = {
-            key: this.options.key,
-            cert: this.options.cert,
-            rejectUnauthorized: false,
-        };
         
-        this.server = https.createServer(options, this.handler);
+        this.server = http.createServer(this.handler);
         this.server.on('connect', this.connect);
         this.server.listen(this.options.port, 
             this.options.host, 

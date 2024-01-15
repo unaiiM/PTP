@@ -208,7 +208,7 @@ export class ProxyScrape extends EventEmitter {
 
                 tlsSocket.on('error', (err : Error) => {
                     Log.log(Log.ERROR, "Error while connecting to the proxy: " + err.message);
-                    throw err;
+                    throw err; // check it, it doesn't catch the error, maybe bcs is async and there is no call stack with it
                 });
             } catch(err : any){
                 cb(false);
