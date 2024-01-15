@@ -148,26 +148,30 @@ export class HttpParser extends EventEmitter {
         this.isEndOfHeaders = false;
     };
 
-    public static build(options : Request) : string {
-        let request : string = options.requestLine.method + " " +
+    public static build(options : Request | Response) : string {
+        let struct : string = "";
+
+        if('requestLine' in options) struct += options.requestLine.method + " " +
             options.requestLine.path + " " +
             options.requestLine.version +
             SampleDelimiter;
+        else struct += options.statusLine.version + " " +
+            options.statusLine.status + " " +
+            options.statusLine.message +
+            SampleDelimiter;
+
         let isContentLength : boolean = false;
 
-        const headers : string[] = Object.keys(options.headers);
-        for(let i : number = 0; i < headers.length; i++){
-            const header : string = headers[i];
+        for(const header in options.headers){
             if(header.toLowerCase() === "content-length") isContentLength = true;
-            request += header + ": " + options.headers[header];
-            if(i + 1 < headers.length) request += SampleDelimiter;
+            struct += header + ": " + options.headers[header] + SampleDelimiter;
         };
 
-        if(options.body && !isContentLength) request += SampleDelimiter + "Content-Length: " + options.body.length;
-        request += EndOfHeadersDelimiter;
-        if(options.body) request += options.body;
+        if(options.body && !isContentLength) struct += "Content-Length: " + options.body.length + SampleDelimiter;
+        struct += SampleDelimiter;
+        if(options.body) struct += options.body;
 
-        return request;
+        return struct;
     };
 
     public static isResponse(struct : Request | Response) : boolean {

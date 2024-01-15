@@ -8,10 +8,9 @@ import {
 import { Proxy } from './types.js';
 import { 
     HttpParser, 
-    Request, 
-    Headers, 
-    UrlExtractor, 
-    UrlDestination 
+    Request,
+    Response, 
+    Headers,
 } from '@lib/http';
 import { Destination } from './types.js';
 import { 
@@ -22,6 +21,7 @@ import {
     SocksHandler, 
     SocksOptions 
 } from './socks.js';
+import { Log } from "@lib/log";
 
 export interface Options {
     host : string;
@@ -41,13 +41,20 @@ export class LocalProxy {
     private tor : Tor;
 
     public constructor(options : Options){
+        Log.init(process.cwd() + "/log.txt", true);
+        
         this.options = options;
+        if(this.options.host) this.options.host = '127.0.0.1';
+        
         this.tor = new Tor(this.options.tor);
+
         this.scrape.on('loaded', () => {
+            Log.log(Log.STATUS, "Proxys loaded! Finding valid proxies...");
             this.scrape.findValidProxys();
         });
 
         this.scrape.on('found', (proxy : Proxy) => {
+            Log.log(Log.INFO, `Proxy found: ${proxy.ip}:${proxy.port}`);
             if(!this.listening){
                 this.listen();
             };
@@ -69,82 +76,95 @@ export class LocalProxy {
         });
 
         req.on('end', async () => {
-            let extractor : UrlExtractor = new UrlExtractor(req.url);
-            let proto : string = extractor.protocol();
-            let dest : UrlDestination = extractor.host();
-            if(!dest.port) dest.port = (proto === 'http') ? 80 : 443;
+            const url : URL = new URL(req.url);
+            const dest : Destination = {
+                host: url.hostname,
+                port: parseInt(url.port) || (url.protocol === 'http:') ? 80 : 443,
+            };
 
             let request : Request = {
                 requestLine: {
                     method: req.method,
                     version: 'HTTP/' + req.httpVersion,
-                    path: extractor.url,
+                    path: `${url.pathname || '/'}${url.search}${url.hash}`,
                 },
                 headers: <Headers> req.headers,
             };
             if(body.length > 0) request.body = body;
             const raw : string = HttpParser.build(request);
 
-            const proxy : Destination = {
-                host: this.scrape.validProxys[0].ip,
-                port: this.scrape.validProxys[0].port,
-            };
-            const torSocket : net.Socket = await this.tor.connect(proxy);
-            const socksHandlerOptions : SocksOptions = {
-                tor: torSocket,
-                proxy: this.scrape.validProxys[0], // need to do that bcs idk why I can't left the socks proxy options void
-                                                   // if I alredy have an existing socket, idk, idk...
-                version: 5,
-                destination: <Destination> dest,
-            };
-
-            const socksHandler : SocksHandler = new SocksHandler(socksHandlerOptions);
-            socksHandler.on('ready', (sock : net.Socket) => {
-                sock.on('data', (buff : Buffer) => {
-                    console.log(buff.toString());
+            try {
+                const socksSocket : SocksHandler = await this.tunnel(dest);
+                socksSocket.on('ready', (sock : net.Socket) => {
+                    sock.pipe(req.socket); // Pipe recived from sock to clientSocket
+                    sock.write(raw);
                 });
-                sock.write(raw);
-            });
+            } catch(err){
+                this.error(res.socket, req, 'ERROR while creating the tunnel.' + (err as Error).message);
+            };
+        });
+    };
+
+    private error(sock : net.Socket, req : http.IncomingMessage, msg : string) : void {
+        Log.log(Log.ERROR, msg);
+        const response : Response = {
+            statusLine: {
+                version: 'HTTP/' + req.httpVersion,
+                status: 500,
+                message: 'Internal server error!'
+            },
+            headers: {}
+        };
+        const str : string = HttpParser.build(response);
+        sock.write(str);
+        sock.destroy();
+    };
+
+    private async tunnel(dest : Destination) : Promise<SocksHandler> {
+        const proxy : Destination = {
+            host: this.scrape.validProxys[0].ip,
+            port: this.scrape.validProxys[0].port,
+        };
+        const torSocket : net.Socket = await this.tor.connect(proxy);
+        const socksHandlerOptions : SocksOptions = {
+            tor: torSocket,
+            proxy: {
+                ip: proxy.host,
+                port: proxy.port,
+            },
+            version: 5,
+            destination: <Destination> dest,
+        };
+        const socksHandler : SocksHandler = new SocksHandler(socksHandlerOptions);
+        socksHandler.on('ready', (sock : net.Socket) => {
+            Log.log(Log.STATUS, "Tunnel done it successfully!");
         });
 
-        res.writeHead(200);
-        res.end(`hello world\n`);
+        return socksHandler;
     };
 
     /**
      * idk the usage of head param, it's always void.
      */
     private connect = async (req : http.IncomingMessage, clientSocket : net.Socket, head : Buffer) : Promise<void> => {
-
+        Log.log(Log.INFO, "CONNECT method recived!");
         const url : URL = new URL(`http://${req.url}`);
-        console.log('CONNECT method recived: ' + url.hostname + ':' + url.port);
-
-        const proxy : Destination = {
-            host: this.scrape.validProxys[0].ip,
-            port: this.scrape.validProxys[0].port,
-        };
         const dest : Destination = {
             host: url.hostname,
             port: parseInt(url.port),
         };
-        const torSocket : net.Socket = await this.tor.connect(proxy);
-
-        const socksHandlerOptions : SocksOptions = {
-            tor: torSocket,
-            proxy: this.scrape.validProxys[0],
-            version: 5,
-            destination: <Destination> dest,
+        try {
+            const socksSocket : SocksHandler = await this.tunnel(dest);
+            socksSocket.on('ready', (sock : net.Socket) => {
+                clientSocket.pipe(sock); // Pipe recived from clientSocket to sock
+                sock.pipe(clientSocket); // Pipe recived from sock to clientSocket
+                clientSocket.write('HTTP/1.1 200 Connection Established\r\n' +
+                'Proxy-agent: Node.js-Proxy\r\n' + // Remove this header maybe
+                '\r\n');
+            });
+        } catch(err){
+            this.error(clientSocket, req, 'ERROR while creating the tunnel.' + (err as Error).message);
         };
-        const socksHandler : SocksHandler = new SocksHandler(socksHandlerOptions);
-        socksHandler.on('ready', () => {
-            console.log('Connect endpoint socket success!');
-            clientSocket.pipe(torSocket); // Pipe recived from clientSocket to sock
-            torSocket.pipe(clientSocket); // Pipe recived from sock to clientSocket
-            clientSocket.write('HTTP/1.1 200 Connection Established\r\n' +
-            'Proxy-agent: Node.js-Proxy\r\n' +
-            '\r\n');
-        });
-
     };
 
     private listen() : void {
@@ -153,15 +173,15 @@ export class LocalProxy {
         const options : https.ServerOptions = {
             key: this.options.key,
             cert: this.options.cert,
-            rejectUnauthorized: false, // don't know why, but just in case
+            rejectUnauthorized: false,
         };
         
         this.server = https.createServer(options, this.handler);
         this.server.on('connect', this.connect);
         this.server.listen(this.options.port, 
-            this.options.host ?? '127.0.0.1', 
+            this.options.host, 
             () => {
-                console.log('Https proxy server successfully listening!');
+                Log.log(Log.STATUS, `Local proxy listening on ${this.options.host}:${this.options.port}`);
             });
     };
 };

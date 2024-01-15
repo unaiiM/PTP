@@ -7,6 +7,7 @@ import {
   Response 
 } from './parser.js';
 import { Headers } from './types.js';
+import { Log } from '@lib/log/index.js';
 
 export interface RequestOptions {
   method : string,
@@ -44,8 +45,9 @@ export class HttpHandler extends EventEmitter {
         headers: options.headers ?? {},
         body: options.body,
       };
-      let req : string = HttpParser.build(parserOptions);
-      console.log(JSON.stringify(req));
-      this.socket.write(req);
+
+      const request : string = HttpParser.build(parserOptions);
+      Log.log(Log.TMP, "Request generated: " + JSON.stringify(request));
+      this.socket.write(request);
     };
 };

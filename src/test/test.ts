@@ -7,7 +7,7 @@ const options : Options = {
     key: fs.readFileSync(String.raw`C:\Users\usuario\Documents\Unai\Proj\PTP\cert\key.pem`),
     cert: fs.readFileSync(String.raw`C:\Users\usuario\Documents\Unai\Proj\PTP\cert\cert.pem`),
     tor: {
-        host: '172.30.102.119',
+        host: '172.30.106.9',
         port: 9050,
     },
 };

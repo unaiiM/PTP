@@ -14,6 +14,7 @@ import {
 } from '@lib/http';
 import { SocksClientEstablishedEvent } from 'socks/typings/common/constants.js';
 import { Proxy } from './types.js';
+import { Log } from '@lib/log/index.js';
 
 export interface ScrapeOptions {
     protocol : string;
@@ -124,8 +125,9 @@ export class ProxyScrape extends EventEmitter {
             this.validProxys = this.validProxys.concat(valid);
 
             if(this.validProxys.length > 0){
+                Log.log(Log.TMP, "Stopped finding valid proxies!");
                 break; 
-            } // temporary, to make tests
+            };
         };
     };
 
@@ -176,9 +178,7 @@ export class ProxyScrape extends EventEmitter {
                   port: proxy.port,
                   type: 5
                 },
-              
                 command: 'connect',
-              
                 destination: {
                   host: 'example.com',
                   port: 443
@@ -206,7 +206,10 @@ export class ProxyScrape extends EventEmitter {
                     handler.request(options);
                 });
 
-                tlsSocket.on('error', (err : Error) => console.log(err));
+                tlsSocket.on('error', (err : Error) => {
+                    Log.log(Log.ERROR, "Error while connecting to the proxy: " + err.message);
+                    throw err;
+                });
             } catch(err : any){
                 cb(false);
                 resolv(false);

@@ -75,6 +75,10 @@ export class SocksHandler extends EventEmitter {
                     if(!options.tor.closed) options.tor.destroy();
                 });
 
+                this.socket.on('error', (err : Error) => {
+                    throw err;
+                });
+
                 this.emit('ready', sock);
             });
     };
